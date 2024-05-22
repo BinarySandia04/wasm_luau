@@ -2,7 +2,7 @@
 mkdir -p .build
 cd .build
 emcmake cmake ..
-cmake --build . 
+cmake --build . -j
 
 cd ..
 cp .build/wasm_luau.wasm web/

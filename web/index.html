@@ -3,9 +3,36 @@
 <head>
   <meta charset="utf-8">
   <title>Luau test!</title>
+  <script>
+    var Module = {
+      onRuntimeInitialized: function(){
+      }
+    }
+    
+    /*
+    window.onload = function(){
+        console.log("???");
+      document.getElementById("complile-button").addEventListener("click", function() {
+          let code = document.getElementById("code-input").value;
+          Module.exec(code);
+        });
+    };
+    */
+    document.addEventListener("DOMContentLoaded", function () {
+      // Your code goes here
+      document.getElementById("compile-button").addEventListener("click", function(){
+          let code = document.getElementById("code-input").value;
+          Module.exec(code);
+      });
+    });
+
+  </script>
   <script type="text/javascript" src="wasm_luau.js"></script>
 </head>
 <body>
 <h1>Hola</h1>
+<textarea id="code-input" rows="20" cols="100"></textarea><br>
+<button id="compile-button">Compilar</button>
+<pre id="code-output"></pre>
 </body>
 </html>
