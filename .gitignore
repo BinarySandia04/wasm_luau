@@ -1,0 +1,16 @@
+.build/
+/.build/
+/build/
+/build[.-]*/
+/coverage/
+/.vs/
+/.vscode/
+/fuzz/luau.pb.*
+/crash-*
+/default.prof*
+/fuzz-*
+/luau
+/luau-tests
+/luau-analyze
+/luau-compile
+__pycache__
