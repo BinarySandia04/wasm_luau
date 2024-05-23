@@ -3,36 +3,55 @@
 <head>
   <meta charset="utf-8">
   <title>Luau test!</title>
+  <style>
+  #error-output {
+    color: red;
+  }
+  </style>
   <script>
     var Module = {
       onRuntimeInitialized: function(){
-      }
+        console.log("Successfully loaded Luau lib");
+      },
     }
-    
-    /*
-    window.onload = function(){
-        console.log("???");
-      document.getElementById("complile-button").addEventListener("click", function() {
-          let code = document.getElementById("code-input").value;
-          Module.exec(code);
-        });
-    };
-    */
+        
+
     document.addEventListener("DOMContentLoaded", function () {
       // Your code goes here
       document.getElementById("compile-button").addEventListener("click", function(){
-          let code = document.getElementById("code-input").value;
-          Module.exec(code);
+        document.getElementById("code-output").innerText = "";
+        document.getElementById("error-output").innerText = "";
+        let code = document.getElementById("code-input").value;
+        Module.exec(code);
       });
     });
+
+    function luauPrint(text){
+      document.getElementById("code-output").innerText += text;
+    }
+
+    function luauRead(text){
+      return prompt(text);
+    }
+
+    function luauError(text){
+      document.getElementById("error-output").innerText += text;
+    }
 
   </script>
   <script type="text/javascript" src="wasm_luau.js"></script>
 </head>
 <body>
-<h1>Hola</h1>
+<h1>WASM Luau VM</h1>
+<p>There are only two exposed methods</p>
+<ul>
+<li><pre>print(...)</pre>
+<li><pre>read(...)</pre>
+</ul>
 <textarea id="code-input" rows="20" cols="100"></textarea><br>
-<button id="compile-button">Compilar</button>
+<button id="compile-button">Run</button>
+<p>Output:</p>
 <pre id="code-output"></pre>
+<pre id="error-output"></pre>
 </body>
 </html>

@@ -636,6 +636,20 @@ function createExportWrapper(name, nargs) {
 }
 
 // include: runtime_exceptions.js
+// Base Emscripten EH error class
+class EmscriptenEH extends Error {}
+
+class EmscriptenSjLj extends EmscriptenEH {}
+
+class CppException extends EmscriptenEH {
+  constructor(excPtr) {
+    super(excPtr);
+    this.excPtr = excPtr;
+    const excInfo = getExceptionMessage(excPtr);
+    this.name = excInfo[0];
+    this.message = excInfo[1];
+  }
+}
 // end include: runtime_exceptions.js
 function findWasmBinary() {
     var f = 'wasm_luau.wasm';
@@ -915,6 +929,11 @@ function dbg(...args) {
 }
 // end include: runtime_debug.js
 // === Body ===
+
+function js_luau_print(text,lentext) { luauPrint(UTF8ToString(text, lentext)); }
+function js_luau_error(text,lentext) { luauError(UTF8ToString(text, lentext)); }
+function js_luau_read(text,lentext) { str = luauRead(UTF8ToString(text, lentext)); pointer = Module._malloc(lengthBytesUTF8(str) + 1); stringToUTF8(str, pointer, lengthBytesUTF8(str) + 1); return pointer; }
+
 // end include: preamble.js
 
 
@@ -1072,6 +1091,38 @@ function dbg(...args) {
       abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
     };
 
+  var exceptionCaught =  [];
+  
+  
+  var uncaughtExceptionCount = 0;
+  var ___cxa_begin_catch = (ptr) => {
+      var info = new ExceptionInfo(ptr);
+      if (!info.get_caught()) {
+        info.set_caught(true);
+        uncaughtExceptionCount--;
+      }
+      info.set_rethrown(false);
+      exceptionCaught.push(info);
+      ___cxa_increment_exception_refcount(info.excPtr);
+      return info.get_exception_ptr();
+    };
+
+  
+  var exceptionLast = 0;
+  
+  
+  var ___cxa_end_catch = () => {
+      // Clear state flag.
+      _setThrew(0, 0);
+      assert(exceptionCaught.length > 0);
+      // Call destructor if one is registered then clear it.
+      var info = exceptionCaught.pop();
+  
+      ___cxa_decrement_exception_refcount(info.excPtr);
+      exceptionLast = 0; // XXX in decRef?
+    };
+
+  
   class ExceptionInfo {
       // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
       constructor(excPtr) {
@@ -1145,17 +1196,68 @@ function dbg(...args) {
       }
     }
   
-  var exceptionLast = 0;
+  var ___resumeException = (ptr) => {
+      if (!exceptionLast) {
+        exceptionLast = new CppException(ptr);
+      }
+      throw exceptionLast;
+    };
   
-  var uncaughtExceptionCount = 0;
+  
+  var setTempRet0 = (val) => __emscripten_tempret_set(val);
+  var findMatchingCatch = (args) => {
+      var thrown =
+        exceptionLast?.excPtr;
+      if (!thrown) {
+        // just pass through the null ptr
+        setTempRet0(0);
+        return 0;
+      }
+      var info = new ExceptionInfo(thrown);
+      info.set_adjusted_ptr(thrown);
+      var thrownType = info.get_type();
+      if (!thrownType) {
+        // just pass through the thrown ptr
+        setTempRet0(0);
+        return thrown;
+      }
+  
+      // can_catch receives a **, add indirection
+      // The different catch blocks are denoted by different types.
+      // Due to inheritance, those types may not precisely match the
+      // type of the thrown object. Find one which matches, and
+      // return the type of the catch block which should be called.
+      for (var arg in args) {
+        var caughtType = args[arg];
+  
+        if (caughtType === 0 || caughtType === thrownType) {
+          // Catch all clause matched or exactly the same type is caught
+          break;
+        }
+        var adjusted_ptr_addr = info.ptr + 16;
+        if (___cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
+          setTempRet0(caughtType);
+          return thrown;
+        }
+      }
+      setTempRet0(thrownType);
+      return thrown;
+    };
+  var ___cxa_find_matching_catch_2 = () => findMatchingCatch([]);
+
+  var ___cxa_find_matching_catch_3 = (arg0) => findMatchingCatch([arg0]);
+
+  
+  
   var ___cxa_throw = (ptr, type, destructor) => {
       var info = new ExceptionInfo(ptr);
       // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
       info.init(type, destructor);
-      exceptionLast = ptr;
+      exceptionLast = new CppException(ptr);
       uncaughtExceptionCount++;
-      assert(false, 'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.');
+      throw exceptionLast;
     };
+
 
   var __abort_js = () => {
       abort('native code called abort()');
@@ -2799,6 +2901,39 @@ function dbg(...args) {
       }
       quit_(1, e);
     };
+
+
+  var incrementExceptionRefcount = (ptr) => ___cxa_increment_exception_refcount(ptr);
+  Module['incrementExceptionRefcount'] = incrementExceptionRefcount;
+
+  var decrementExceptionRefcount = (ptr) => ___cxa_decrement_exception_refcount(ptr);
+  Module['decrementExceptionRefcount'] = decrementExceptionRefcount;
+
+  
+  
+  
+  
+  var stackAlloc = (sz) => __emscripten_stack_alloc(sz);
+  
+  var getExceptionMessageCommon = (ptr) => {
+      var sp = stackSave();
+      var type_addr_addr = stackAlloc(4);
+      var message_addr_addr = stackAlloc(4);
+      ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
+      var type_addr = HEAPU32[((type_addr_addr)>>2)];
+      var message_addr = HEAPU32[((message_addr_addr)>>2)];
+      var type = UTF8ToString(type_addr);
+      _free(type_addr);
+      var message;
+      if (message_addr) {
+        message = UTF8ToString(message_addr);
+        _free(message_addr);
+      }
+      stackRestore(sp);
+      return [type, message];
+    };
+  var getExceptionMessage = (ptr) => getExceptionMessageCommon(ptr);
+  Module['getExceptionMessage'] = getExceptionMessage;
 embind_init_charCodes();
 BindingError = Module['BindingError'] = class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }};
 InternalError = Module['InternalError'] = class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }};
@@ -2811,7 +2946,17 @@ var wasmImports = {
   /** @export */
   __assert_fail: ___assert_fail,
   /** @export */
+  __cxa_begin_catch: ___cxa_begin_catch,
+  /** @export */
+  __cxa_end_catch: ___cxa_end_catch,
+  /** @export */
+  __cxa_find_matching_catch_2: ___cxa_find_matching_catch_2,
+  /** @export */
+  __cxa_find_matching_catch_3: ___cxa_find_matching_catch_3,
+  /** @export */
   __cxa_throw: ___cxa_throw,
+  /** @export */
+  __resumeException: ___resumeException,
   /** @export */
   _abort_js: __abort_js,
   /** @export */
@@ -2853,15 +2998,38 @@ var wasmImports = {
   /** @export */
   fd_write: _fd_write,
   /** @export */
+  invoke_ii,
+  /** @export */
+  invoke_iii,
+  /** @export */
+  invoke_iiii,
+  /** @export */
+  invoke_v,
+  /** @export */
+  invoke_vi,
+  /** @export */
+  invoke_vii,
+  /** @export */
+  invoke_viii,
+  /** @export */
+  invoke_viiii,
+  /** @export */
+  js_luau_error,
+  /** @export */
+  js_luau_print,
+  /** @export */
+  js_luau_read,
+  /** @export */
   strftime: _strftime
 };
 var wasmExports = createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
 var _free = createExportWrapper('free', 1);
 var _main = Module['_main'] = createExportWrapper('main', 2);
-var _malloc = createExportWrapper('malloc', 1);
+var _malloc = Module['_malloc'] = createExportWrapper('malloc', 1);
 var ___getTypeName = createExportWrapper('__getTypeName', 1);
 var _fflush = createExportWrapper('fflush', 1);
+var _setThrew = createExportWrapper('setThrew', 2);
 var __emscripten_tempret_set = createExportWrapper('_emscripten_tempret_set', 1);
 var _emscripten_stack_init = () => (_emscripten_stack_init = wasmExports['emscripten_stack_init'])();
 var _emscripten_stack_get_free = () => (_emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'])();
@@ -2870,8 +3038,101 @@ var _emscripten_stack_get_end = () => (_emscripten_stack_get_end = wasmExports['
 var __emscripten_stack_restore = (a0) => (__emscripten_stack_restore = wasmExports['_emscripten_stack_restore'])(a0);
 var __emscripten_stack_alloc = (a0) => (__emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'])(a0);
 var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
+var ___cxa_free_exception = createExportWrapper('__cxa_free_exception', 1);
+var ___cxa_increment_exception_refcount = createExportWrapper('__cxa_increment_exception_refcount', 1);
+var ___cxa_decrement_exception_refcount = createExportWrapper('__cxa_decrement_exception_refcount', 1);
+var ___get_exception_message = createExportWrapper('__get_exception_message', 3);
+var ___cxa_can_catch = createExportWrapper('__cxa_can_catch', 3);
 var ___cxa_is_pointer_type = createExportWrapper('__cxa_is_pointer_type', 1);
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper('dynCall_jiji', 5);
+
+function invoke_ii(index,a1) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_v(index) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)();
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_iii(index,a1,a2) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_vi(index,a1) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_iiii(index,a1,a2,a3) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2,a3);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_viii(index,a1,a2,a3) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1,a2,a3);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_viiii(index,a1,a2,a3,a4) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1,a2,a3,a4);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_vii(index,a1,a2) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1,a2);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
 
 
 // include: postamble.js
@@ -2887,9 +3148,7 @@ var missingLibrarySymbols = [
   'readI53FromU64',
   'convertI32PairToI53',
   'convertU32PairToI53',
-  'stackAlloc',
   'getTempRet0',
-  'setTempRet0',
   'zeroMemory',
   'growMemory',
   'inetPton4',
@@ -2999,7 +3258,6 @@ var missingLibrarySymbols = [
   'makePromise',
   'idsToPromises',
   'makePromiseCallback',
-  'findMatchingCatch',
   'Browser_asyncPrepareDataCounter',
   'setMainLoop',
   'getSocketFromFD',
@@ -3102,6 +3360,8 @@ var unexportedSymbols = [
   'convertI32PairToI53Checked',
   'stackSave',
   'stackRestore',
+  'stackAlloc',
+  'setTempRet0',
   'ptrToString',
   'exitJS',
   'getHeapMax',
@@ -3165,6 +3425,11 @@ var unexportedSymbols = [
   'exceptionLast',
   'exceptionCaught',
   'ExceptionInfo',
+  'findMatchingCatch',
+  'getExceptionMessageCommon',
+  'incrementExceptionRefcount',
+  'decrementExceptionRefcount',
+  'getExceptionMessage',
   'Browser',
   'getPreloadedImageData__data',
   'wget',

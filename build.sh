@@ -1,7 +1,7 @@
 #!/bin/bash
 mkdir -p .build
 cd .build
-emcmake cmake ..
+emcmake cmake .. 
 cmake --build . -j
 
 cd ..
