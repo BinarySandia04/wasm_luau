@@ -1,2 +1,2 @@
 #!/bin/bash
-firefox web/index.html &
+firefox test.html &
