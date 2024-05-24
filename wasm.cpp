@@ -79,7 +79,14 @@ extern int luaopen_deflib(lua_State *L)
 
 int main() {
     // std::cout << "Loaded succesfully Lua lib" << std::endl;
+    
     return 0;
+}
+
+void throw_lua_error(lua_State *L){
+  size_t l;
+  const char *s = luaL_tolstring(L, -1, &l);
+  js_luau_error(s, l);
 }
 
 void exec(std::string content) {
@@ -91,20 +98,12 @@ void exec(std::string content) {
   size_t bytecodeSize = 0;
   bytecode = luau_compile(content.c_str(), content.length(), NULL, &bytecodeSize);
   if(luau_load(L, "main", bytecode, bytecodeSize, 0) != LUA_OK){
-      size_t l;
-      const char *s = luaL_tolstring(L, -1, &l);
-      js_luau_error(s, l);
-      free(bytecode);
-      return;
+    throw_lua_error(L);
+    free(bytecode);
   }
   free(bytecode);
 
-  if(lua_pcall(L, 0, 0, 0) != LUA_OK){
-      size_t l;
-      const char *s = luaL_tolstring(L, -1, &l);
-      js_luau_error(s, l);
-  }
-
+  if(lua_pcall(L, 0, 0, 0) != LUA_OK) throw_lua_error(L);
   lua_close(L);
 }
 

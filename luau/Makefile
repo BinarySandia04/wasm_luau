@@ -129,8 +129,9 @@ ifneq ($(native),)
 	TESTS_ARGS+=--codegen
 endif
 
+CXXFLAGS+=-DLUA_USE_LONGJMP=1
 ifneq ($(nativelj),)
-	CXXFLAGS+=-DLUA_USE_LONGJMP=1
+	# CXXFLAGS+=-DLUA_USE_LONGJMP=1
 	TESTS_ARGS+=--codegen
 endif
 

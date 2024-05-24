@@ -8,6 +8,8 @@
 #include "lmem.h"
 #include "lvm.h"
 
+// #define LUA_USE_LONGJMP
+
 #if LUA_USE_LONGJMP
 #include <setjmp.h>
 #include <stdlib.h>

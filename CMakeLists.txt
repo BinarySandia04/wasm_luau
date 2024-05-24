@@ -1,14 +1,24 @@
 cmake_minimum_required(VERSION 3.8)
 
+option(WASM_BUILD "Compile wasm" OFF) #OFF by default
+if(WASM_BUILD)
 project(wasm_luau)
-
 set (CMAKE_CXX_STANDARD 17)
-
 add_subdirectory("luau")
 
-add_executable(wasm_luau main.cpp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+add_executable(wasm_luau wasm.cpp)
 set_target_properties(wasm_luau PROPERTIES LINK_FLAGS "-s EXPORTED_FUNCTIONS=_main,_malloc -sNO_DISABLE_EXCEPTION_CATCHING -sEXPORT_NAME='LuauModule'")
 target_link_libraries(wasm_luau PUBLIC Luau.Compiler)
 target_link_libraries(wasm_luau PUBLIC Luau.VM)
 target_link_libraries(wasm_luau PUBLIC embind)
 add_dependencies(wasm_luau Luau.Compiler Luau.VM)
+else()
+  project(luau_corrector)
+set (CMAKE_CXX_STANDARD 17)
+add_subdirectory("luau")
+  add_executable(luau_corrector corrector.cpp)
+target_link_libraries(luau_corrector PUBLIC Luau.Compiler)
+target_link_libraries(luau_corrector PUBLIC Luau.VM)
+endif(WASM_BUILD)
+unset(WASM_BUILD CACHE)
