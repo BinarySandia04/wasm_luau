@@ -3,8 +3,8 @@
 cd luau
 mkdir -p .build && cd .build
 cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build . --target Luau.Repl.CLI --config RelWithDebInfo
-cmake --build . --target Luau.Analyze.CLI --config RelWithDebInfo
+cmake --build . --target Luau.Repl.CLI --config RelWithDebInfo -j 4
+cmake --build . --target Luau.Analyze.CLI --config RelWithDebInfo -j 4
 cd ../..
 
 # Build web
@@ -25,4 +25,4 @@ cmake .. -DWASM_BUILD=OFF
 cmake --build .
 
 cd ..
-cp .build_c/luau_corrector .
+cp .build_c/corrector .
