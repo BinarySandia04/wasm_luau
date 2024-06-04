@@ -28,6 +28,10 @@ inside `out/`
 
 ### Docker
 
+The WebAssembly Module is compiled when creating a Docker image of
+this repository, also, the Docker container can be used for
+using doctests
+
 Run
 ```shell
 ./docker-build.sh 
