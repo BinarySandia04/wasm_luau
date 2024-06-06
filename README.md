@@ -39,3 +39,13 @@ Run
 
 This will create a docker image named `wasm_luau` that compiles the assembly module and then
 it places it inside `out/` on the host machine
+
+## Codelearn
+
+Run inside this folder
+```shell
+docker build -t lua .
+```
+
+This will create the corrector image and also compile the WebAssembly module.
+Then it can be used for correcting exercises (see _app/jobs/check_lua_exercise_job.rb_)
