@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstring>
 #include <exception>
 #include <iostream>
@@ -17,7 +18,10 @@
 #define INPUT_FILENAME "input.lua"
 #endif
 
-static void writestring(const char *s, size_t l) { fwrite(s, 1, l, stdout); }
+static void writestring(const char *s, size_t l) {
+  fwrite(s, 1, l, stdout);
+  fflush(stdout);
+}
 
 static int l_print(lua_State *L) {
   int n = lua_gettop(L);
