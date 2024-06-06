@@ -99,11 +99,11 @@ int main() {
   /*
   Per si es vol executar més codi
   */
-  content = "";
-  std::string line = "";
-  while(std::getline(std::cin, line)){
-    content += line + "\n";
-  }
+  std::ostringstream oss{};
+  oss << std::cin.rdbuf();
+  std::string cont{oss.str()};
+  content = cont;
+
   bytecode = luau_compile(content.c_str(), content.length(), NULL, &bytecodeSize);
   if(luau_load(L, "main", bytecode, bytecodeSize, 0) != LUA_OK){
     error = true;
