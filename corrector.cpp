@@ -99,7 +99,6 @@ int main() {
   /*
   Per si es vol executar més codi
   */
-Com et dius? Aran
   content = "";
   std::string line = "";
   while(std::getline(std::cin, line)){
