@@ -12,3 +12,6 @@
 /fuzz-*
 __pycache__
 luau_corrector
+input.lua
+input.txt
+test.py

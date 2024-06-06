@@ -53,6 +53,7 @@ static int l_read(lua_State *L){
 
     // Llegim la entrada i la retornem
     std::getline(std::cin, readString);
+    fflush(stdin);
     
     const char *ret = readString.c_str();
     lua_pushlstring(L, ret, strlen(ret));
