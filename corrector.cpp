@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <cstring>
 #include <exception>
 #include <iostream>
@@ -14,16 +13,11 @@
 
 #ifdef GLOBAL_INPUT_PATH
 #define INPUT_FILENAME "/tmp/input.lua"
-#define TEST_FILENAME "/tmp/test.lua"
 #else
 #define INPUT_FILENAME "input.lua"
-#define TEST_FILENAME "test.lua"
 #endif
 
-static void writestring(const char *s, size_t l) {
-  fwrite(s, 1, l, stdout);
-  fflush(stdout);
-}
+static void writestring(const char *s, size_t l) { fwrite(s, 1, l, stdout); }
 
 static int l_print(lua_State *L) {
   int n = lua_gettop(L);
@@ -82,14 +76,11 @@ extern int luaopen_deflib(lua_State *L) {
 }
 
 int main() {
-  std::fstream input_file(INPUT_FILENAME), test_file(TEST_FILENAME);
-  std::stringstream input_buffer, test_buffer;
+  std::fstream input_file(INPUT_FILENAME);
+  std::stringstream input_buffer;
   input_buffer << input_file.rdbuf();
-  test_buffer << test_file.rdbuf();
   std::string content = input_buffer.str();
-  std::string test_content = test_buffer.str();
   input_file.close();
-  test_file.close();
 
   bool error = false;
   lua_State *L = luaL_newstate();
@@ -110,8 +101,11 @@ int main() {
   /*
   Per si es vol executar més codi
   */
-  content = test_content;
-
+  content = "";
+  std::string line = "";
+  while(std::getline(std::cin, line)){
+    content += line + "\n";
+  }
   bytecode = luau_compile(content.c_str(), content.length(), NULL, &bytecodeSize);
   if(luau_load(L, "main", bytecode, bytecodeSize, 0) != LUA_OK){
     error = true;
