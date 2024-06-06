@@ -89,6 +89,7 @@ int main() {
   std::string content = input_buffer.str();
   std::string test_content = test_buffer.str();
   input_file.close();
+  test_file.close();
 
   bool error = false;
   lua_State *L = luaL_newstate();
