@@ -14,8 +14,10 @@
 
 #ifdef GLOBAL_INPUT_PATH
 #define INPUT_FILENAME "/tmp/input.lua"
+#define TEST_FILENAME "/tmp/test.lua"
 #else
 #define INPUT_FILENAME "input.lua"
+#define TEST_FILENAME "test.lua"
 #endif
 
 static void writestring(const char *s, size_t l) {
@@ -38,6 +40,7 @@ static int l_print(lua_State *L) {
   return 0;
 }
 
+/*
 static int l_read(lua_State *L){
     int n = lua_gettop(L);
     
@@ -63,10 +66,11 @@ static int l_read(lua_State *L){
     lua_pushlstring(L, ret, strlen(ret));
     return 1;
 }
+*/
 
 static const struct luaL_Reg printlib[] = {
     {"print", l_print},
-    {"read", l_read},
+    // {"read", l_read},
     {NULL, NULL} /* end of array */
 };
 
@@ -78,10 +82,12 @@ extern int luaopen_deflib(lua_State *L) {
 }
 
 int main() {
-  std::fstream input_file(INPUT_FILENAME);
-  std::stringstream input_buffer;
+  std::fstream input_file(INPUT_FILENAME), test_file(TEST_FILENAME);
+  std::stringstream input_buffer, test_buffer;
   input_buffer << input_file.rdbuf();
+  test_buffer << test_file.rdbuf();
   std::string content = input_buffer.str();
+  std::string test_content = test_buffer.str();
   input_file.close();
 
   bool error = false;
@@ -103,10 +109,7 @@ int main() {
   /*
   Per si es vol executar més codi
   */
-  std::ostringstream oss{};
-  oss << std::cin.rdbuf();
-  std::string cont{oss.str()};
-  content = cont;
+  content = test_content;
 
   bytecode = luau_compile(content.c_str(), content.length(), NULL, &bytecodeSize);
   if(luau_load(L, "main", bytecode, bytecodeSize, 0) != LUA_OK){
