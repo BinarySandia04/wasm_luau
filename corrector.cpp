@@ -98,8 +98,13 @@ int main() {
 
   /*
   Per si es vol executar més codi
+  */
 
-  content = "print(\"a es \" .. a)";
+  content = "";
+  std::string line = "";
+  while(std::getline(std::cin, line)){
+    content += line + "\n";
+  }
   bytecode = luau_compile(content.c_str(), content.length(), NULL, &bytecodeSize);
   if(luau_load(L, "main", bytecode, bytecodeSize, 0) != LUA_OK){
     error = true;
@@ -108,7 +113,6 @@ int main() {
   free(bytecode);
 
   if(lua_pcall(L, 0, 0, 0) != LUA_OK) error = true;
-  */
   lua_close(L);
 
   return 0;
