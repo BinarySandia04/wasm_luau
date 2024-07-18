@@ -1,6 +1,9 @@
 #!/bin/bash
+
+rm -r .build .build_c
 # compile luau
 cd luau
+
 mkdir -p .build && cd .build
 cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build . --target Luau.Repl.CLI --config RelWithDebInfo
