@@ -97,7 +97,11 @@ int main(int argc, char **argv) {
   bytecode = luau_compile(content.c_str(), content.length(), NULL, &bytecodeSize);
   if(luau_load(L, "main", bytecode, bytecodeSize, 0) != LUA_OK){
     error = true;
+    size_t l;
+    const char *s = luaL_tolstring(L, -1, &l);
+    std::cerr << std::string(s) << std::endl;
     free(bytecode);
+    return 1;
   }
   free(bytecode);
 
@@ -114,7 +118,11 @@ int main(int argc, char **argv) {
   bytecode = luau_compile(content.c_str(), content.length(), NULL, &bytecodeSize);
   if(luau_load(L, "main", bytecode, bytecodeSize, 0) != LUA_OK){
     error = true;
+    size_t l;
+    const char *s = luaL_tolstring(L, -1, &l);
+    std::cerr << std::string(s) << std::endl;
     free(bytecode);
+    return 1;
   }
   free(bytecode);
 
