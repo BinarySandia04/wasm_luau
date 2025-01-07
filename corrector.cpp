@@ -75,8 +75,13 @@ extern int luaopen_deflib(lua_State *L) {
   return 0;
 }
 
-int main() {
-  std::fstream input_file(INPUT_FILENAME);
+int main(int argc, char **argv) {
+  std::string filename = INPUT_FILENAME;
+  if(argc > 1){
+    filename = argv[1];
+  }
+
+  std::fstream input_file(filename);
   std::stringstream input_buffer;
   input_buffer << input_file.rdbuf();
   std::string content = input_buffer.str();
